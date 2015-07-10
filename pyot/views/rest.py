@@ -20,22 +20,24 @@ along with PyoT.  If not, see <http://www.gnu.org/licenses/>.
 
 @author: Andrea Azzara' <a.azzara@sssup.it>
 '''
-import logging
-from django.shortcuts import HttpResponse, render
-from django.http import HttpResponseBadRequest
-from pyot.tasks import *
-from pyot.models import *
-from django.template import Context
-from pyot.resourceRepr import getRenderer
-from django.db.models import Max
-from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
-from pyot.Forms import *
-from django.http import HttpResponseRedirect, Http404
-from django.core.urlresolvers import reverse
 import json
+import logging
+
 from celery.result import AsyncResult
-from pyot.tools.utils import *
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.core.paginator import Paginator
+from django.core.urlresolvers import reverse
+from django.db.models import Max
+from django.http import HttpResponseBadRequest
+from django.http import HttpResponseRedirect, Http404
+from django.shortcuts import HttpResponse, render
+from django.template import Context
+
+from pyot.Forms import *
+from pyot.models import *
+from pyot.resourceRepr import getRenderer
+from pyot.tasks import *
+from pyot.tools.utils import *
 
 
 #@staff_member_required
@@ -55,7 +57,7 @@ def startServer(request, wid):
 #@staff_member_required
 def stopAllSubs():
     sublist = Subscription.objects.filter(active=True)
-    #stop all active subscriptions
+    # stop all active subscriptions
     for s in sublist:
         s.cancel_subscription()
 
@@ -99,7 +101,7 @@ def getServerStatus(request):
         try:
             _e = status[host]
             wstatus = 'Connected'
-            uriLink = '<input type="submit" value="START" onclick = "startCoap('+ Id +');"/><input type="submit" value="STOP" onclick = "stopCoap('+ Id +');"/>'
+            uriLink = '<input type="submit" value="START" onclick = "startCoap(' + Id + ');"/><input type="submit" value="STOP" onclick = "stopCoap(' + Id + ');"/>'
         except KeyError:
             wstatus = 'Disconnected'
             uriLink = ''
@@ -125,14 +127,14 @@ def hostsList(request):
     if request.method != 'GET':
         response = 'Bad request, needs a GET method'
         return HttpResponseBadRequest(response)
-    sortname = request.REQUEST.get('sortname', 'timeadded')
-    sortorder = request.REQUEST.get('sortorder', 'asc') # Ascending/descending
-    page = request.REQUEST.get('page', 1) # What page we are on
-    rp = int(request.REQUEST.get('rp', 15)) # Num requests per page
+    sortname = request.GET.get('sortname', 'timeadded')
+    sortorder = request.GET.get('sortorder', 'asc') # Ascending/descending
+    page = request.GET.get('page', 1) # What page we are on
+    rp = int(request.GET.get('rp', 15)) # Num requests per page
     order = ''
     if sortorder == 'desc':
         order = '-'
-    obj = Host.objects.filter(active=True).values('id', 'ip6address', 'timeadded', 'lastSeen').order_by(order+sortname)
+    obj = Host.objects.filter(active=True).values('id', 'ip6address', 'timeadded', 'lastSeen').order_by(order + sortname)
     p = Paginator(obj, rp)
     filteredHostList = p.page(page).object_list
     l = []
@@ -154,7 +156,7 @@ def hostsList(request):
 
 #@login_required
 def resources(request):
-    hostid = request.REQUEST.get('id', '')
+    hostid = request.GET.get('id', '')
 
     if hostid == '':
         logging.debug('vuoto')
@@ -164,7 +166,7 @@ def resources(request):
             out = ''
             for i in allres:
                 if j != 0:
-                    out = out + ','+ str(i.id)
+                    out = out + ',' + str(i.id)
                 else:
                     out = out + str(i.id)
                 j += 1
@@ -176,19 +178,19 @@ def resources(request):
 #@login_required
 def resourceList(request):
     hostidList = None
-    query = request.REQUEST.get('query', '')
-    querytype = request.REQUEST.get('qtype', '')
-    page = request.REQUEST.get('page', 1) # What page we are on
-    rp = int(request.REQUEST.get('rp', 15)) # Num requests per page
+    query = request.GET.get('query', '')
+    querytype = request.GET.get('qtype', '')
+    page = request.GET.get('page', 1) # What page we are on
+    rp = int(request.GET.get('rp', 15)) # Num requests per page
 
     if querytype == 'id' and query != '':
         hostidList = query.split(',')
     if hostidList == None:
         return HttpResponse('')
     for i in hostidList:
-        logging.debug('retrieving resource '+ i)
+        logging.debug('retrieving resource ' + i)
     resObj = Resource.objects.filter(host__id__in=hostidList,
-                                     host__active=True) #eccezioni per la query
+                                     host__active=True) # eccezioni per la query
     p = Paginator(resObj, rp)
     filteredResList = p.page(page).object_list
     l = []
@@ -233,14 +235,14 @@ def resourceStatus(request, rid):
 #@login_required
 def obsList(request):
     rid = request.GET['query']
-    sortname = request.REQUEST.get('sortname', 'timeadded')
-    sortorder = request.REQUEST.get('sortorder', 'asc') # Ascending/descending
-    page = request.REQUEST.get('page', 1) # What page we are on
-    rp = int(request.REQUEST.get('rp', 15)) # Num requests per page
+    sortname = request.GET.get('sortname', 'timeadded')
+    sortorder = request.GET.get('sortorder', 'asc') # Ascending/descending
+    page = request.GET.get('page', 1) # What page we are on
+    rp = int(request.GET.get('rp', 15)) # Num requests per page
     order = ''
     if sortorder == 'desc':
         order = '-'
-    messList = CoapMsg.objects.filter(resource__id=rid).exclude(sub=None).order_by(order+sortname)
+    messList = CoapMsg.objects.filter(resource__id=rid).exclude(sub=None).order_by(order + sortname)
     p = Paginator(messList, rp)
     filteredMessList = p.page(page).object_list
     l = []
@@ -296,7 +298,7 @@ def subList(request, rid):
 
 #@staff_member_required
 def cancelSub(request):
-    pid = request.REQUEST.get('pid', '')
+    pid = request.GET.get('pid', '')
     try:
         s = Subscription.objects.get(pid=pid)
         s.cancel_subscription()
@@ -308,9 +310,9 @@ def cancelSub(request):
 #@login_required
 def opRes(request):
     try:
-        rid = request.REQUEST.get('id', '')
-        payload = request.REQUEST.get('pd', None)
-        operation = request.REQUEST.get('op', '')
+        rid = request.GET.get('id', '')
+        payload = request.GET.get('pd', None)
+        operation = request.GET.get('op', '')
         try:
             r = Resource.objects.get(id=rid)
         except ObjectDoesNotExist:
@@ -334,10 +336,10 @@ def opRes(request):
 #@staff_member_required
 def observe(request):
     try:
-        rid = request.REQUEST.get('id', '')
-        duration = request.REQUEST.get('duration', '30')
-        handler = request.REQUEST.get('handler', '')
-        renew = request.REQUEST.get('renew', 'false')
+        rid = request.GET.get('id', '')
+        duration = request.GET.get('duration', '30')
+        handler = request.GET.get('handler', '')
+        renew = request.GET.get('renew', 'false')
 
         if handler == 'undefined':
             handler = None
@@ -352,7 +354,7 @@ def observe(request):
         else:
             renew = True
 
-        out = 'starting observe on resource ' + rid + ' with duration '+ str(nduration)
+        out = 'starting observe on resource ' + rid + ' with duration ' + str(nduration)
         try:
             r = Resource.objects.get(id=rid)
             r.OBSERVE(nduration, handler, renew=renew)
@@ -406,12 +408,12 @@ def remHandler(request, hid):
             return HttpResponse('Active Subscriptions are using this handler!')
         associatedSubs = Subscription.objects.filter(handler=ob, active=False)
         if associatedSubs.count() != 0:
-            #we have subscriptions associated, but not active
+            # we have subscriptions associated, but not active
             ob.active = False
             ob.save()
             return HttpResponseRedirect(reverse('pyot.views.handlers'))
         else:
-            #we don't have any subscription associated
+            # we don't have any subscription associated
             ob.delete()
             return HttpResponseRedirect(reverse('pyot.views.handlers'))
     except Exception:

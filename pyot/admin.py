@@ -21,9 +21,12 @@ along with PyoT.  If not, see <http://www.gnu.org/licenses/>.
 @author: Andrea Azzara' <a.azzara@sssup.it>
 '''
 
-from pyot.models import *
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+
+from pyot.models import *
+
+
 #from django.contrib.auth.models import User
 #from pyot.models import UserProfile
 
@@ -39,15 +42,16 @@ admin.site.register(TResProcessing)
 admin.site.register(TResT)
 admin.site.register(RplGraph)
 admin.site.register(EmulatorState)
+admin.site.register(pyMapReduce)
+admin.site.register(pyMap)
 
-# Define an inline admin descriptor for UserProfile model
-# which acts a bit like a singleton
+
 class UserProfileInline(admin.StackedInline):
     model = UserProfile
     can_delete = False
     verbose_name_plural = 'profile'
 
-# Define a new User admin
+
 class UserAdmin(UserAdmin):
     inlines = (UserProfileInline, )
 
